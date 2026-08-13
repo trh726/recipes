@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recipe Box</title>
+  <meta name="description" content="A personal recipe box — searchable, tag-filtered, and maintained by Claude over MCP." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍲</text></svg>" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#/">
+      <span class="brand-mark" aria-hidden="true">🍲</span>
+      <span class="brand-name">Recipe Box</span>
+    </a>
+    <p class="tagline">Saved by Claude, cooked by you.</p>
+  </header>
+
+  <main id="app">
+    <!-- Views are rendered here by app.js -->
+    <noscript><p class="empty">This app needs JavaScript to browse recipes.</p></noscript>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Recipes are added and edited through the
+      <a href="https://modelcontextprotocol.io" rel="noopener" target="_blank">MCP</a>
+      server by Claude &middot; running on Cloudflare Workers + D1.
+    </p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "recipes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Recipe box: remote MCP server for Claude + web frontend, on Cloudflare Workers",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
+    "db:create": "wrangler d1 create recipes-db",
+    "db:migrate": "wrangler d1 execute recipes-db --remote --file=./schema.sql",
+    "db:migrate:local": "wrangler d1 execute recipes-db --local --file=./schema.sql",
+    "db:seed": "wrangler d1 execute recipes-db --remote --file=./seed.sql",
+    "db:seed:local": "wrangler d1 execute recipes-db --local --file=./seed.sql"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "agents": "^0.20.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260813.1",
+    "typescript": "^5.9.0",
+    "wrangler": "^4.123.0"
+  }
+}

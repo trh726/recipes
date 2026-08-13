@@ -1,0 +1,332 @@
+/* Recipe Box — hand-rolled styles, no framework. Light/dark via system theme. */
+
+:root {
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --surface-2: #f1ece4;
+  --text: #2b2620;
+  --text-muted: #6f675c;
+  --accent: #b3541e;
+  --accent-soft: #f4e3d7;
+  --border: #e4dcd0;
+  --shadow: 0 1px 3px rgb(43 38 32 / 0.08), 0 4px 14px rgb(43 38 32 / 0.06);
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #191613;
+    --surface: #221e1a;
+    --surface-2: #2b2621;
+    --text: #ece6dd;
+    --text-muted: #a89e90;
+    --accent: #e08a4e;
+    --accent-soft: #3a2c21;
+    --border: #38322b;
+    --shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); }
+
+.site-header {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 0.5rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.brand-mark { font-size: 1.9rem; }
+.brand-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  margin: 0.25rem 0 0 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+main {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 3rem;
+  flex: 1;
+}
+
+/* ---------- List view ---------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0 1.25rem;
+}
+
+.search {
+  flex: 1 1 260px;
+  position: relative;
+}
+
+.search input {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  outline: none;
+}
+
+.search input:focus { border-color: var(--accent); }
+.search input::placeholder { color: var(--text-muted); }
+
+.result-count {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.tag-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.tag-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.tag-chip:hover { background: var(--surface-2); }
+.tag-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-meta {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.mini-tag {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem 1rem;
+}
+
+.empty .hint {
+  font-size: 0.9rem;
+  max-width: 46ch;
+  margin: 0.75rem auto 0;
+}
+
+/* ---------- Detail view ---------- */
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.back-link:hover { color: var(--accent); }
+
+.recipe {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.75rem clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.recipe h1 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.recipe .description {
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.meta-row strong { color: var(--text); font-weight: 600; }
+
+.recipe-columns {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr;
+  gap: 2rem;
+}
+
+@media (max-width: 680px) {
+  .recipe-columns { grid-template-columns: 1fr; }
+}
+
+.recipe h2 {
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin: 0 0 0.75rem;
+}
+
+.ingredients { list-style: none; margin: 0; padding: 0; }
+
+.ingredients li { margin-bottom: 0.15rem; }
+
+.ingredients label {
+  display: flex;
+  gap: 0.55rem;
+  align-items: baseline;
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+
+.ingredients input[type="checkbox"] { accent-color: var(--accent); }
+
+.ingredients input:checked + span {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.steps { margin: 0; padding-left: 1.4rem; }
+
+.steps li {
+  margin-bottom: 0.9rem;
+  padding-left: 0.3rem;
+}
+
+.notes {
+  margin-top: 1.75rem;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  font-size: 0.95rem;
+}
+
+.notes h2 { margin-top: 0; }
+.notes p { margin: 0; white-space: pre-wrap; }
+
+.source-line {
+  margin-top: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 1.25rem;
+}
+
+.site-footer p { margin: 0; max-width: 960px; margin-inline: auto; }
+
+.loading {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem;
+}

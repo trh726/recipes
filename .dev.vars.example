@@ -1,0 +1,9 @@
+# Copy to `.dev.vars` for local development (never commit `.dev.vars`).
+#
+# Optional shared secret protecting the MCP endpoint.
+# - Unset  -> MCP served at  /mcp            (open; fine for local dev)
+# - Set    -> MCP served at  /mcp/<secret>   (unguessable URL, works with
+#             claude.ai custom connectors, which accept a URL but no headers)
+#
+# In production set it with:  npx wrangler secret put MCP_SECRET
+MCP_SECRET=
