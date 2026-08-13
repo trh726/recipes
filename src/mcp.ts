@@ -56,6 +56,25 @@ const recipeFields = {
   notes: z
     .string()
     .describe("Tips, substitutions, and things learned from making it"),
+  image_url: z
+    .string()
+    .describe("HTTPS URL of a photo of the dish. Pass an empty string to clear it."),
+  nutrition: z
+    .object({
+      serving_size: z.string().optional().describe("What one serving is, e.g. '1 bowl (350g)'"),
+      calories: z.number().min(0).optional().describe("kcal per serving"),
+      protein_g: z.number().min(0).optional().describe("Protein in grams"),
+      fat_g: z.number().min(0).optional().describe("Total fat in grams"),
+      saturated_fat_g: z.number().min(0).optional().describe("Saturated fat in grams"),
+      carbohydrates_g: z.number().min(0).optional().describe("Total carbohydrates in grams"),
+      fiber_g: z.number().min(0).optional().describe("Dietary fiber in grams"),
+      sugar_g: z.number().min(0).optional().describe("Sugar in grams"),
+      sodium_mg: z.number().min(0).optional().describe("Sodium in milligrams"),
+    })
+    .describe(
+      "Per-serving nutrition estimate (all fields optional). When estimating rather than " +
+        "copying from a source, say so in the recipe notes."
+    ),
 };
 
 export class RecipesMcpAgent extends McpAgent<Env> {
@@ -138,6 +157,8 @@ export class RecipesMcpAgent extends McpAgent<Env> {
           cook_time_minutes: recipeFields.cook_time_minutes.optional(),
           source: recipeFields.source.optional(),
           notes: recipeFields.notes.optional(),
+          image_url: recipeFields.image_url.optional(),
+          nutrition: recipeFields.nutrition.optional(),
         },
       },
       async (input) => {
@@ -165,6 +186,11 @@ export class RecipesMcpAgent extends McpAgent<Env> {
           cook_time_minutes: recipeFields.cook_time_minutes.optional(),
           source: recipeFields.source.optional(),
           notes: recipeFields.notes.optional(),
+          image_url: recipeFields.image_url.optional(),
+          nutrition: recipeFields.nutrition
+            .nullable()
+            .optional()
+            .describe("Per-serving nutrition estimate. Pass null to clear saved nutrition."),
         },
       },
       async ({ id, ...patch }) => {

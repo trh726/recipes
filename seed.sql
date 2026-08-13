@@ -5,7 +5,7 @@
 
 INSERT OR IGNORE INTO recipes
   (id, title, description, ingredients, instructions, tags, servings,
-   prep_time_minutes, cook_time_minutes, source, notes, created_at, updated_at)
+   prep_time_minutes, cook_time_minutes, source, notes, nutrition, created_at, updated_at)
 VALUES
   (
     'rcp_seed000001',
@@ -17,7 +17,8 @@ VALUES
     '4 servings',
     10, 20,
     '',
-    'Swap spinach for kale if that''s what''s around — just simmer a few minutes longer.',
+    'Swap spinach for kale if that''s what''s around — just simmer a few minutes longer. Nutrition is a rough estimate.',
+    '{"serving_size":"1 bowl, without rice","calories":420,"protein_g":14,"fat_g":22,"saturated_fat_g":14,"carbohydrates_g":45,"fiber_g":12,"sugar_g":9,"sodium_mg":780}',
     '2026-01-01T00:00:00.000Z',
     '2026-01-01T00:00:00.000Z'
   ),
@@ -32,6 +33,7 @@ VALUES
     20, 12,
     '',
     'Chilling overnight makes them even better.',
+    NULL,
     '2026-01-02T00:00:00.000Z',
     '2026-01-02T00:00:00.000Z'
   );

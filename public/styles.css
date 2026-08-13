@@ -162,6 +162,14 @@ main {
   border-color: var(--accent);
 }
 
+.card-img {
+  width: calc(100% + 2.4rem);
+  margin: -1.1rem -1.2rem 0.25rem;
+  height: 150px;
+  object-fit: cover;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
 .card h2 {
   margin: 0;
   font-size: 1.1rem;
@@ -225,6 +233,14 @@ main {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1.75rem clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.recipe-hero {
+  width: calc(100% + 2 * clamp(1.25rem, 4vw, 2.5rem));
+  margin: -1.75rem calc(-1 * clamp(1.25rem, 4vw, 2.5rem)) 1.5rem;
+  max-height: 340px;
+  object-fit: cover;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .recipe h1 {
@@ -295,6 +311,44 @@ main {
 .steps li {
   margin-bottom: 0.9rem;
   padding-left: 0.3rem;
+}
+
+.nutrition {
+  margin-top: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.nutrition h2 { margin-top: 0; }
+
+.nutrition-serving {
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.nutrition-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.75rem;
+}
+
+.nutrition-cell {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+
+.nutrition-value { font-weight: 650; }
+
+.nutrition-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }
 
 .notes {

@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS recipes (
   cook_time_minutes INTEGER,
   source            TEXT NOT NULL DEFAULT '',    -- URL or free text ("Grandma", "NYT Cooking", ...)
   notes             TEXT NOT NULL DEFAULT '',
+  image_url         TEXT NOT NULL DEFAULT '',    -- optional photo URL (https)
+  nutrition         TEXT,                        -- optional JSON object, per-serving (see src/types.ts Nutrition)
   created_at        TEXT NOT NULL,               -- ISO 8601
   updated_at        TEXT NOT NULL                -- ISO 8601
 );

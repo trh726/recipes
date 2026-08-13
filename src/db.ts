@@ -5,7 +5,7 @@
  * text columns; full-text search is served by the `recipes_fts` FTS5 table,
  * which triggers in schema.sql keep in sync with `recipes`.
  */
-import type { Recipe, RecipeInput, RecipeSummary } from "./types";
+import type { Nutrition, Recipe, RecipeInput, RecipeSummary } from "./types";
 
 /** Row shape as it comes back from D1 (JSON columns still serialized). */
 interface RecipeRow {
@@ -20,6 +20,8 @@ interface RecipeRow {
   cook_time_minutes: number | null;
   source: string;
   notes: string;
+  image_url: string;
+  nutrition: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,12 +37,50 @@ function parseJsonArray(text: string): string[] {
   }
 }
 
+function parseNutrition(text: string | null): Nutrition | null {
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Nutrition)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Keep only known, valid nutrition fields; return null if nothing remains. */
+function normalizeNutrition(nutrition: Nutrition | null | undefined): Nutrition | null {
+  if (!nutrition) return null;
+  const out: Nutrition = {};
+  const servingSize = nutrition.serving_size?.trim();
+  if (servingSize) out.serving_size = servingSize;
+  const numericKeys = [
+    "calories",
+    "protein_g",
+    "fat_g",
+    "saturated_fat_g",
+    "carbohydrates_g",
+    "fiber_g",
+    "sugar_g",
+    "sodium_mg",
+  ] as const;
+  for (const key of numericKeys) {
+    const value = nutrition[key];
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      out[key] = value;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 function rowToRecipe(row: RecipeRow): Recipe {
   return {
     ...row,
     ingredients: parseJsonArray(row.ingredients),
     instructions: parseJsonArray(row.instructions),
     tags: parseJsonArray(row.tags),
+    nutrition: parseNutrition(row.nutrition),
   };
 }
 
@@ -53,6 +93,7 @@ function rowToSummary(row: RecipeRow): RecipeSummary {
     servings: row.servings,
     prep_time_minutes: row.prep_time_minutes,
     cook_time_minutes: row.cook_time_minutes,
+    image_url: row.image_url,
     updated_at: row.updated_at,
   };
 }
@@ -104,6 +145,8 @@ export async function createRecipe(db: D1Database, input: RecipeInput): Promise<
     cook_time_minutes: input.cook_time_minutes ?? null,
     source: input.source?.trim() ?? "",
     notes: input.notes?.trim() ?? "",
+    image_url: input.image_url?.trim() ?? "",
+    nutrition: normalizeNutrition(input.nutrition),
     created_at: now,
     updated_at: now,
   };
@@ -112,8 +155,9 @@ export async function createRecipe(db: D1Database, input: RecipeInput): Promise<
     .prepare(
       `INSERT INTO recipes
          (id, title, description, ingredients, instructions, tags, servings,
-          prep_time_minutes, cook_time_minutes, source, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          prep_time_minutes, cook_time_minutes, source, notes, image_url,
+          nutrition, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       recipe.id,
@@ -127,6 +171,8 @@ export async function createRecipe(db: D1Database, input: RecipeInput): Promise<
       recipe.cook_time_minutes,
       recipe.source,
       recipe.notes,
+      recipe.image_url,
+      recipe.nutrition ? JSON.stringify(recipe.nutrition) : null,
       recipe.created_at,
       recipe.updated_at
     )
@@ -224,6 +270,10 @@ export async function updateRecipe(
       patch.cook_time_minutes !== undefined ? patch.cook_time_minutes : existing.cook_time_minutes,
     source: patch.source !== undefined ? patch.source.trim() : existing.source,
     notes: patch.notes !== undefined ? patch.notes.trim() : existing.notes,
+    image_url: patch.image_url !== undefined ? patch.image_url.trim() : existing.image_url,
+    // `nutrition: null` clears saved nutrition; omitting the field keeps it.
+    nutrition:
+      patch.nutrition !== undefined ? normalizeNutrition(patch.nutrition) : existing.nutrition,
     updated_at: new Date().toISOString(),
   };
 
@@ -232,7 +282,7 @@ export async function updateRecipe(
       `UPDATE recipes SET
          title = ?, description = ?, ingredients = ?, instructions = ?, tags = ?,
          servings = ?, prep_time_minutes = ?, cook_time_minutes = ?, source = ?,
-         notes = ?, updated_at = ?
+         notes = ?, image_url = ?, nutrition = ?, updated_at = ?
        WHERE id = ?`
     )
     .bind(
@@ -246,6 +296,8 @@ export async function updateRecipe(
       updated.cook_time_minutes,
       updated.source,
       updated.notes,
+      updated.image_url,
+      updated.nutrition ? JSON.stringify(updated.nutrition) : null,
       updated.updated_at,
       id
     )

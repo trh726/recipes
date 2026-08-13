@@ -76,11 +76,18 @@ async function fetchRecipes() {
   return api(`/api/recipes${qs ? `?${qs}` : ""}`);
 }
 
+/** Only http(s) URLs are ever rendered as images/links. */
+function safeUrl(url) {
+  return /^https?:\/\//i.test(url ?? "") ? url : null;
+}
+
 function recipeCard(recipe) {
   const time = totalTime(recipe);
+  const img = safeUrl(recipe.image_url);
   return el(
     "a",
     { class: "card", href: `#/recipe/${recipe.id}` },
+    img ? el("img", { class: "card-img", src: img, alt: "", loading: "lazy" }) : null,
     el("h2", {}, recipe.title),
     recipe.description ? el("p", {}, recipe.description) : null,
     el(
@@ -193,6 +200,44 @@ async function renderList() {
 
 // ---------- detail view ----------
 
+const NUTRITION_ROWS = [
+  ["calories", "Calories", ""],
+  ["protein_g", "Protein", " g"],
+  ["fat_g", "Fat", " g"],
+  ["saturated_fat_g", "Sat. fat", " g"],
+  ["carbohydrates_g", "Carbs", " g"],
+  ["fiber_g", "Fiber", " g"],
+  ["sugar_g", "Sugar", " g"],
+  ["sodium_mg", "Sodium", " mg"],
+];
+
+function nutritionPanel(nutrition) {
+  if (!nutrition) return null;
+  const cells = NUTRITION_ROWS.filter(([key]) => typeof nutrition[key] === "number").map(
+    ([key, label, unit]) =>
+      el(
+        "div",
+        { class: "nutrition-cell" },
+        el("span", { class: "nutrition-value" }, `${nutrition[key]}${unit}`),
+        el("span", { class: "nutrition-label" }, label)
+      )
+  );
+  if (cells.length === 0) return null;
+  return el(
+    "aside",
+    { class: "nutrition" },
+    el(
+      "h2",
+      {},
+      "Nutrition",
+      nutrition.serving_size
+        ? el("span", { class: "nutrition-serving" }, ` · per ${nutrition.serving_size}`)
+        : el("span", { class: "nutrition-serving" }, " · per serving")
+    ),
+    el("div", { class: "nutrition-grid" }, cells)
+  );
+}
+
 async function renderRecipe(id) {
   app.replaceChildren(el("p", { class: "loading" }, "Loading recipe…"));
 
@@ -234,12 +279,14 @@ async function renderRecipe(id) {
   );
 
   const sourceIsUrl = /^https?:\/\//i.test(recipe.source);
+  const heroImg = safeUrl(recipe.image_url);
 
   app.replaceChildren(
     el("a", { class: "back-link", href: "#/" }, "← All recipes"),
     el(
       "article",
       { class: "recipe" },
+      heroImg ? el("img", { class: "recipe-hero", src: heroImg, alt: recipe.title }) : null,
       el("h1", {}, recipe.title),
       recipe.description ? el("p", { class: "description" }, recipe.description) : null,
       meta,
@@ -249,6 +296,7 @@ async function renderRecipe(id) {
         el("section", {}, el("h2", {}, "Ingredients"), ingredients),
         el("section", {}, el("h2", {}, "Steps"), steps)
       ),
+      nutritionPanel(recipe.nutrition),
       recipe.notes
         ? el("aside", { class: "notes" }, el("h2", {}, "Notes"), el("p", {}, recipe.notes))
         : null,

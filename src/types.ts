@@ -13,6 +13,23 @@ export interface Env {
   MCP_SECRET?: string;
 }
 
+/**
+ * Optional per-serving nutrition estimate.
+ * Field names mirror schema.org/NutritionInformation, flattened to numbers
+ * (grams/milligrams) instead of unit strings so they sort and compare cleanly.
+ */
+export interface Nutrition {
+  serving_size?: string;
+  calories?: number;
+  protein_g?: number;
+  fat_g?: number;
+  saturated_fat_g?: number;
+  carbohydrates_g?: number;
+  fiber_g?: number;
+  sugar_g?: number;
+  sodium_mg?: number;
+}
+
 /** A recipe as stored/returned by the app (ingredients etc. parsed from JSON). */
 export interface Recipe {
   id: string;
@@ -26,6 +43,8 @@ export interface Recipe {
   cook_time_minutes: number | null;
   source: string;
   notes: string;
+  image_url: string;
+  nutrition: Nutrition | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +58,7 @@ export interface RecipeSummary {
   servings: string;
   prep_time_minutes: number | null;
   cook_time_minutes: number | null;
+  image_url: string;
   updated_at: string;
 }
 
@@ -54,4 +74,7 @@ export interface RecipeInput {
   cook_time_minutes?: number | null;
   source?: string;
   notes?: string;
+  image_url?: string;
+  /** Pass null to clear previously saved nutrition info. */
+  nutrition?: Nutrition | null;
 }

@@ -63,6 +63,7 @@ Everything fits comfortably in Cloudflare's free tier.
 │   ├── app.js        # Hash-routed SPA: list/search view + detail view
 │   └── styles.css
 ├── schema.sql        # Tables, FTS5 index, sync triggers
+├── migrations/       # Incremental ALTERs for databases created from older schemas
 ├── seed.sql          # Optional sample recipes
 └── wrangler.jsonc    # Worker config: D1, Durable Object, assets bindings
 ```
@@ -93,6 +94,8 @@ Copy the `database_id` from the output into `wrangler.jsonc` (replacing `YOUR_D1
 npm run db:migrate        # remote (production) database
 npm run db:seed           # optional: two sample recipes
 ```
+
+> Already created your database from an older schema? Apply the incremental files in `migrations/` instead of re-running `schema.sql` — each file notes the command to run.
 
 ### 3. Protect the MCP endpoint (recommended)
 
@@ -150,8 +153,10 @@ claude mcp add --transport http recipe-box https://recipes.<your-subdomain>.work
 | `list_recipes` | `limit?`, `offset?`, `tag?` | Newest-first summaries, optional tag filter |
 | `search_recipes` | `query`, `limit?` | Ranked FTS5 search with prefix matching |
 | `get_recipe` | `id` | One recipe in full |
-| `create_recipe` | `title`, `ingredients[]`, `instructions[]`, `description?`, `tags?[]`, `servings?`, `prep_time_minutes?`, `cook_time_minutes?`, `source?`, `notes?` | Save a new recipe; returns it with its generated id |
-| `update_recipe` | `id` + any create fields | Partial update; provided array fields replace in full |
+| `create_recipe` | `title`, `ingredients[]`, `instructions[]`, `description?`, `tags?[]`, `servings?`, `prep_time_minutes?`, `cook_time_minutes?`, `source?`, `notes?`, `image_url?`, `nutrition?` | Save a new recipe; returns it with its generated id |
+| `update_recipe` | `id` + any create fields | Partial update; provided array fields replace in full; `nutrition: null` clears saved nutrition |
+
+`nutrition` is an object of optional per-serving values modeled on [schema.org/NutritionInformation](https://schema.org/NutritionInformation), flattened to numbers: `serving_size`, `calories`, `protein_g`, `fat_g`, `saturated_fat_g`, `carbohydrates_g`, `fiber_g`, `sugar_g`, `sodium_mg`. `image_url` is an HTTPS photo URL (the frontend renders only `http(s)` URLs).
 | `delete_recipe` | `id` | Permanent delete |
 | `list_tags` | — | All tags with usage counts |
 
@@ -194,7 +199,7 @@ Type-check with `npm run check`.
 ## Possible extensions
 
 - OAuth (e.g. GitHub login) on the MCP endpoint via `workers-oauth-provider`
-- Image uploads for finished dishes (R2 + a `photo_url` column)
+- Image *uploads* for finished dishes (R2 behind the existing `image_url` field)
 - A "cooked it" log with dates and ratings, so Claude can answer *"what did I make last month?"*
 - Meal-plan and shopping-list tools composed from existing recipes
 
