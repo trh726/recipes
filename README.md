@@ -191,7 +191,7 @@ Type-check with `npm run check`.
 
 ## Security
 
-- **No credentials in the repo.** The D1 `database_id` in `wrangler.jsonc` is a placeholder (and D1 ids are not secrets — access requires your Cloudflare account). The MCP secret lives in Worker secrets (`wrangler secret put`) and locally in the git-ignored `.dev.vars`.
+- **No credentials in the repo.** The D1 `database_id` in `wrangler.jsonc` is committed, but D1 ids are resource identifiers, not secrets — access requires your Cloudflare account. The MCP secret lives in Worker secrets (`wrangler secret put`) and locally in the git-ignored `.dev.vars`.
 - **MCP endpoint protection** uses a capability URL (`/mcp/<secret>`) rather than OAuth, because claude.ai custom connectors can send a URL but not custom headers. The secret only ever travels over HTTPS. For a single-user personal app this is a reasonable trade-off; if you need real multi-user auth, Cloudflare's [`workers-oauth-provider`](https://github.com/cloudflare/workers-oauth-provider) drops into the same `McpAgent` setup.
 - **The write path is not exposed over plain HTTP.** `POST/PUT/DELETE` on `/api/*` return 405; mutations exist only as MCP tools behind the secret URL.
 - **SQL is fully parameterized** and FTS query input is tokenized/quoted before it reaches `MATCH`, so neither SQL nor FTS5 syntax injection is possible.

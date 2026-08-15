@@ -23,8 +23,7 @@
     {
       "binding": "DB",
       "database_name": "recipes-db",
-      // Replace with the id printed by `wrangler d1 create recipes-db`.
-      "database_id": "YOUR_D1_DATABASE_ID"
+      "database_id": "49f63135-808c-4744-9e67-9b2c9309e375"
     }
   ],
 
