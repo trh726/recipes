@@ -42,10 +42,16 @@ const recipeFields = {
     .describe("One or two sentences on what the dish is and why it's good"),
   ingredients: z
     .array(z.string())
-    .describe("Ingredient lines with quantities, e.g. '2 tbsp olive oil'"),
+    .describe(
+      "Ingredient lines with quantities, e.g. '2 tbsp olive oil'. Always use Imperial/US units " +
+        "(cups, tbsp, tsp, oz, lb) — convert metric amounts before saving."
+    ),
   instructions: z
     .array(z.string())
-    .describe("Ordered preparation steps, one step per array item"),
+    .describe(
+      "Ordered preparation steps, one step per array item. Use Imperial/US units; oven and " +
+        "cooking temperatures in °F."
+    ),
   tags: z
     .array(z.string())
     .describe("Short lowercase tags for filtering, e.g. ['dinner', 'mexican', 'quick']"),
