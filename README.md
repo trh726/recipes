@@ -114,6 +114,15 @@ npm run deploy
 
 Wrangler prints your Worker URL, e.g. `https://recipes.<your-subdomain>.workers.dev`. The frontend is live at that URL immediately.
 
+**Optional — custom domain.** If your domain's DNS is on Cloudflare, add a `routes` entry to `wrangler.jsonc` and redeploy; Cloudflare creates the DNS record and TLS certificate for you:
+
+```jsonc
+"routes": [{ "pattern": "recipes.example.com", "custom_domain": true }],
+"workers_dev": true   // keep the workers.dev URL too (routes disable it by default)
+```
+
+The live instance runs at [recipes.heuermann.xyz](https://recipes.heuermann.xyz).
+
 ## Connecting Claude
 
 ### claude.ai (web & mobile) — custom connector

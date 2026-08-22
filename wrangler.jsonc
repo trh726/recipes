@@ -12,6 +12,13 @@
   "compatibility_date": "2025-06-01",
   "compatibility_flags": ["nodejs_compat"],
 
+  // Custom domain — Cloudflare manages the DNS record and TLS cert automatically.
+  "routes": [
+    { "pattern": "recipes.heuermann.xyz", "custom_domain": true }
+  ],
+  // Keep the *.workers.dev URL alive as well.
+  "workers_dev": true,
+
   // Static frontend, served for any route the Worker doesn't handle itself.
   "assets": {
     "directory": "./public",
