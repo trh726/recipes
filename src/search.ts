@@ -1,5 +1,6 @@
 import { getRecipeSummaries, searchRecipes } from "./db";
 import type { Env, Recipe, RecipeSummary } from "./types";
+import { errorFields, log } from "./log";
 
 // Keep the model, pooling, dimensions, and index in sync when changing these.
 export const EMBEDDING_MODEL = "@cf/baai/bge-base-en-v1.5";
@@ -105,8 +106,8 @@ export async function hybridSearch(env: Env, rawQuery: string, requestedLimit = 
   const semantic = Promise.race([
     semanticRecipes(env, query, tags, source),
     new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("Search timeout")), SEARCH_TIMEOUT_MS); }),
-  ]).then(recipes => ({ recipes, degraded: false })).catch(() => {
-    console.warn("Semantic search unavailable; using keyword results.");
+  ]).then(recipes => ({ recipes, degraded: false })).catch(error => {
+    log("warn", "semantic_search_degraded", errorFields(error));
     return { recipes: [] as RecipeSummary[], degraded: true };
   }).finally(() => { if (timer !== undefined) clearTimeout(timer); });
   const [keywords, meanings] = await Promise.all([keyword, semantic]);

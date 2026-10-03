@@ -75,8 +75,12 @@
     }
   ],
 
+  // Invocation logs record full request URLs, which would expose the MCP
+  // secret path. src/log.ts writes a redacted, sampled per-request line instead.
+  // No head_sampling_rate: it would also drop cron and snapshot events.
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "logs": { "invocation_logs": false }
   },
 
   // Bindings aren't inherited into named environments. Keep local development

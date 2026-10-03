@@ -16,6 +16,7 @@ import { handleApi } from "./api";
 import { syncSearchIndex } from "./search-index";
 import { limitPublicTraffic } from "./traffic";
 import { refreshRecipeSnapshot } from "./snapshot";
+import { logRequest } from "./log";
 import type { Env } from "./types";
 
 export { RecipesMcpAgent };
@@ -42,35 +43,49 @@ export default {
     }
   },
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Invocation logs are off (they record the full URL, including the MCP
+    // secret), so this summary is the per-request log line.
+    const started = Date.now();
     const url = new URL(request.url);
-    const path = url.pathname;
-
-    if (path === MCP_ROUTE || path.startsWith(`${MCP_ROUTE}/`)) {
-      const secret = env.MCP_SECRET?.trim();
-
-      if (!secret) {
-        // No secret configured: serve MCP at /mcp directly.
-        return mcpHandler.fetch(request, env, ctx);
-      }
-
-      // Secret configured: only /mcp/<secret> is valid. Strip the secret
-      // segment and forward to the handler at its canonical /mcp path.
-      const expectedPrefix = `${MCP_ROUTE}/${secret}`;
-      if (path === expectedPrefix || path.startsWith(`${expectedPrefix}/`)) {
-        const rewritten = new URL(request.url);
-        rewritten.pathname = MCP_ROUTE + path.slice(expectedPrefix.length);
-        return mcpHandler.fetch(new Request(rewritten, request), env, ctx);
-      }
-      return unauthorized();
+    try {
+      const response = await route(request, url, env, ctx);
+      logRequest(request, url, response.status, started);
+      return response;
+    } catch (error) {
+      logRequest(request, url, 500, started, error);
+      throw error;
     }
-
-    const limited = await limitPublicTraffic(request, env);
-    if (limited) return limited;
-
-    if (path === "/api" || path.startsWith("/api/")) {
-      return handleApi(request, env);
-    }
-
-    return handle(request, env, ctx);
   },
 } satisfies ExportedHandler<Env>;
+
+async function route(request: Request, url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const path = url.pathname;
+
+  if (path === MCP_ROUTE || path.startsWith(`${MCP_ROUTE}/`)) {
+    const secret = env.MCP_SECRET?.trim();
+
+    if (!secret) {
+      // No secret configured: serve MCP at /mcp directly.
+      return mcpHandler.fetch(request, env, ctx);
+    }
+
+    // Secret configured: only /mcp/<secret> is valid. Strip the secret
+    // segment and forward to the handler at its canonical /mcp path.
+    const expectedPrefix = `${MCP_ROUTE}/${secret}`;
+    if (path === expectedPrefix || path.startsWith(`${expectedPrefix}/`)) {
+      const rewritten = new URL(request.url);
+      rewritten.pathname = MCP_ROUTE + path.slice(expectedPrefix.length);
+      return mcpHandler.fetch(new Request(rewritten, request), env, ctx);
+    }
+    return unauthorized();
+  }
+
+  const limited = await limitPublicTraffic(request, env);
+  if (limited) return limited;
+
+  if (path === "/api" || path.startsWith("/api/")) {
+    return handleApi(request, env);
+  }
+
+  return handle(request, env, ctx);
+}

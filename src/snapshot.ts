@@ -1,6 +1,7 @@
 import { normalizeTags, readRecipeCatalog } from "./db";
 import type { Env, Recipe, RecipeSummary } from "./types";
 import type { SearchSource } from "./search";
+import { errorFields, log } from "./log";
 
 export interface RecipeCatalog {
   revision: number;
@@ -46,10 +47,10 @@ export class RecipeSnapshot {
           this.state.storage.sql.exec("INSERT OR REPLACE INTO catalog(id, document) VALUES (1, ?)", document);
           this.document = document;
           this.revision = catalog.revision;
-          console.log({ event: "recipe_snapshot_published", revision: catalog.revision, recipes: catalog.recipes.length, bytes });
+          log("log", "recipe_snapshot_published", { revision: catalog.revision, recipes: catalog.recipes.length, bytes });
           return Response.json({ changed: true, revision: catalog.revision, recipes: catalog.recipes.length });
         } catch (error) {
-          console.error({ event: "recipe_snapshot_failed", message: error instanceof Error ? error.message : "Unknown error" });
+          log("error", "recipe_snapshot_failed", errorFields(error));
           return Response.json({ error: "Snapshot refresh failed; the previous snapshot is preserved." }, { status: 503 });
         }
       });
@@ -69,7 +70,7 @@ export async function refreshRecipeSnapshot(env: Env): Promise<boolean> {
     const result = await env.RECIPE_SNAPSHOT.getByName("catalog").fetch("https://snapshot/refresh", { method: "POST" });
     if (result.ok) return true;
   } catch { /* A later scheduled refresh retries from the D1 revision. */ }
-  console.error({ event: "recipe_snapshot_refresh_pending" });
+  log("error", "recipe_snapshot_refresh_pending");
   return false;
 }
 
@@ -81,14 +82,14 @@ export async function loadRecipeCatalog(env: Env, origin: string): Promise<Recip
     const hit = await cache?.match(key);
     if (hit) {
       const catalog = await hit.json<RecipeCatalog>();
-      if (Math.random() < 0.01) console.log({ event: "recipe_snapshot_read", source: "edge", sampleRate: 0.01, revision: catalog.revision });
+      if (Math.random() < 0.01) log("log", "recipe_snapshot_read", { source: "edge", sampleRate: 0.01, revision: catalog.revision });
       return catalog;
     }
   } catch { /* Fall back to the persisted snapshot, never to D1. */ }
   const response = await env.RECIPE_SNAPSHOT.getByName("catalog").fetch("https://snapshot/catalog");
   if (!response.ok) throw new Error("Recipe snapshot is unavailable");
   const catalog = await response.clone().json<RecipeCatalog>();
-  console.log({ event: "recipe_snapshot_read", source: "durable", sampleRate: 1, revision: catalog.revision });
+  log("log", "recipe_snapshot_read", { source: "durable", sampleRate: 1, revision: catalog.revision });
   try { await cache?.put(key, response); } catch { /* Snapshot remains usable. */ }
   return catalog;
 }

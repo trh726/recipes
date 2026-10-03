@@ -6,6 +6,7 @@ import { formatMinutes, recipeImage, safeUrl } from '../../lib/presentation.js';
 import { parseServings } from '../../lib/scaling.js';
 import { recipeStructuredData } from '../../lib/structured-data.js';
 import Layout from '../../layouts/Layout.astro';
+import { errorFields, log } from '../../log';
 let recipe: Recipe | null = null;
 let failed = false;
 try {
@@ -15,7 +16,7 @@ try {
     else failed = response.status >= 500;
   }
 } catch (error) {
-  console.error('Recipe page failed:', error);
+  log('error', 'recipe_page_failed', errorFields(error));
   failed = true;
 }
 if (!recipe) Astro.response.status = failed ? 500 : 404;

@@ -10,6 +10,7 @@
  *   GET /api/tags               tags with counts
  */
 import type { Env } from "./types";
+import { errorFields, log } from "./log";
 import { getRecipe, listRecipes, listTags, normalizeTags } from "./db";
 import { hybridSearch, MAX_QUERY_LENGTH } from "./search";
 import { publicCachedResponse } from "./public-cache";
@@ -109,7 +110,7 @@ async function handleSnapshotApi(request: Request, url: URL, env: Env): Promise<
     });
     return unchanged ? new Response(null, { status: 304, headers: response.headers }) : response;
   } catch (error) {
-    console.error({ event: "recipe_snapshot_read_failed", message: error instanceof Error ? error.message : "Unknown error" });
+    log("error", "recipe_snapshot_read_failed", errorFields(error));
     return json({ error: "Recipes are temporarily unavailable. Please try again shortly." }, 503);
   }
 }
@@ -148,7 +149,7 @@ async function handleUncachedApi(request: Request, env: Env): Promise<Response> 
 
     return json({ error: "Not found" }, 404);
   } catch (err) {
-    console.error("API error:", err);
+    log("error", "api_failed", errorFields(err));
     return json({ error: "Internal error" }, 500);
   }
 }

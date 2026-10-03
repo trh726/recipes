@@ -1,6 +1,7 @@
 import { getRecipe } from "./db";
 import { embedTexts, recipeSearchText } from "./search";
 import type { Env, Recipe } from "./types";
+import { errorFields, log } from "./log";
 
 interface IndexJob { recipe_id: string; revision: string }
 
@@ -41,13 +42,13 @@ export async function syncSearchIndex(env: Env): Promise<void> {
       `).bind(job.recipe_id, job.revision, lease)),
       env.DB.prepare(`UPDATE recipe_search_jobs SET lease_token = NULL, lease_until = 0 WHERE lease_token = ?`).bind(lease),
     ]);
-    console.log(`Search index: processed ${recipes.length} recipes and ${deleted.length} deletions.`);
+    log("log", "search_index_synced", { recipes: recipes.length, deletions: deleted.length });
   } catch (error) {
     await env.DB.prepare(`
       UPDATE recipe_search_jobs SET lease_token = NULL, lease_until = 0, next_attempt = unixepoch() + 300
       WHERE lease_token = ?
     `).bind(lease).run();
-    console.error("Search indexing failed; queued for retry.");
+    log("error", "search_index_failed", { jobs: jobs.length, ...errorFields(error) });
     throw error;
   }
 }
