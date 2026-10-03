@@ -1,0 +1,57 @@
+---
+import { env } from 'cloudflare:workers';
+import type { Env, Recipe } from '../../types';
+import { handleApi } from '../../api';
+import { formatMinutes, recipeImage, safeUrl } from '../../lib/presentation.js';
+import { parseServings } from '../../lib/scaling.js';
+import { recipeStructuredData } from '../../lib/structured-data.js';
+import Layout from '../../layouts/Layout.astro';
+let recipe: Recipe | null = null;
+let failed = false;
+try {
+  if (/^[A-Za-z0-9_-]+$/.test(Astro.params.id || '')) {
+    const response = await handleApi(new Request(new URL(`/api/recipes/${Astro.params.id}`, Astro.url)), env as unknown as Env);
+    if (response.ok) recipe = await response.json() as Recipe;
+    else failed = response.status >= 500;
+  }
+} catch (error) {
+  console.error('Recipe page failed:', error);
+  failed = true;
+}
+if (!recipe) Astro.response.status = failed ? 500 : 404;
+const image = recipe ? recipeImage(recipe) : null;
+const structuredData = recipe ? recipeStructuredData(recipe, Astro.site!) : undefined;
+const servings = recipe ? parseServings(recipe.servings) : null;
+const nutritionRows = [
+  ['calories', 'Calories', ''], ['protein_g', 'Protein', ' g'], ['fat_g', 'Fat', ' g'],
+  ['saturated_fat_g', 'Sat. fat', ' g'], ['carbohydrates_g', 'Carbs', ' g'],
+  ['fiber_g', 'Fiber', ' g'], ['sugar_g', 'Sugar', ' g'], ['sodium_mg', 'Sodium', ' mg'],
+] as const;
+const nutrition = recipe?.nutrition;
+const cells = nutritionRows.filter(([key]) => typeof nutrition?.[key] === 'number');
+---
+<Layout title={`${recipe?.title || (failed ? 'Unable to load recipe' : 'Recipe not found')} · Recipe Box`} description={recipe?.description || 'A recipe from your personal collection.'} image={image?.url} structuredData={structuredData}>
+  {recipe ? <>
+    <div class="detail-toolbar"><a class="back-link" href="/recipes">← Back to the collection</a><button class="button" data-print hidden>Print recipe</button></div>
+    <article class="recipe" data-recipe-id={recipe.id} data-base-servings={servings} data-original-servings={recipe.servings}>
+      {image?.url && <img class:list={['recipe-hero', { illustrated: image.illustrated }]} src={image.url} alt={image.illustrated ? `Illustration of ${recipe.title}` : recipe.title} transition:name={`image-${recipe.id}`} />}
+      {image?.illustrated && <p class="image-credit">AI illustration</p>}
+      <p class="eyebrow">From your recipe box</p><h1 transition:name={`title-${recipe.id}`}>{recipe.title}</h1>
+      {recipe.description && <p class="description">{recipe.description}</p>}
+      <div class="meta-row">
+        {servings ? <span class="servings-stepper"><strong>Serves: </strong><button class="step" data-servings-change="-1" aria-label="Fewer servings" hidden>−</button><span class="servings-count" aria-live="polite">{servings}</span><button class="step" data-servings-change="1" aria-label="More servings" hidden>+</button></span> : <span class="scale-row"><strong>{recipe.servings ? `Serves ${recipe.servings} · ` : 'Scale: '}</strong>{[[0.5, '½×'], [1, '1×'], [2, '2×'], [3, '3×']].map(([factor, label]) => <button class:list={['scale-btn', { active: factor === 1 }]} data-factor={factor} aria-pressed={factor === 1} hidden>{label}</button>)}</span>}
+        {formatMinutes(recipe.prep_time_minutes) && <span><strong>Prep: </strong>{formatMinutes(recipe.prep_time_minutes)}</span>}
+        {formatMinutes(recipe.cook_time_minutes) && <span><strong>Cook: </strong>{formatMinutes(recipe.cook_time_minutes)}</span>}
+        {recipe.tags.map(tag => <a class="mini-tag" rel="nofollow" href={`/recipes?tag=${encodeURIComponent(tag)}`}>{tag}</a>)}
+      </div>
+      <div class="recipe-columns">
+        <section><h2>Ingredients</h2><ul class="ingredients">{recipe.ingredients.map(item => <li><label><input type="checkbox" /><span data-ingredient={item}>{item}</span></label></li>)}</ul></section>
+        <section><div class="steps-heading"><h2>Let’s make it</h2><span class="cooking-progress" role="status" hidden>0 of {recipe.instructions.length} steps complete</span></div><ol class="steps">{recipe.instructions.map((step, index) => <li id={`step-${index + 1}`}><label><input type="checkbox" aria-label={`Complete step ${index + 1}`} /><span class="step-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><span class="step-text">{step}</span></label></li>)}</ol></section>
+      </div>
+      {nutrition && cells.length > 0 && <aside class="nutrition"><h2>Nutrition<span class="nutrition-serving"> · per {nutrition.serving_size || 'serving'}</span></h2><div class="nutrition-grid">{cells.map(([key, label, unit]) => <div class="nutrition-cell"><span class="nutrition-value">{nutrition[key]}{unit}</span><span class="nutrition-label">{label}</span></div>)}</div></aside>}
+      {recipe.notes && <aside class="notes"><h2>Notes</h2><p>{recipe.notes}</p></aside>}
+      {recipe.source && <p class="source-line">Source: {safeUrl(recipe.source) ? <a href={recipe.source} target="_blank" rel="noopener">{recipe.source}</a> : recipe.source}</p>}
+    </article>
+  </> : <div class="empty"><h1>{failed ? 'The kitchen’s taking a moment.' : 'Recipe not found.'}</h1><p>{failed ? 'Please try again in a moment.' : 'This recipe may have been removed.'}</p><a class="button" href="/recipes">Back to the collection</a></div>}
+  <script>import '../../client/cooking';</script>
+</Layout>

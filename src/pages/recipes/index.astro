@@ -1,0 +1,62 @@
+---
+import { env } from 'cloudflare:workers';
+import type { Env, RecipeSummary } from '../../types';
+import { handleApi } from '../../api';
+import Layout from '../../layouts/Layout.astro';
+import RecipeCard from '../../components/RecipeCard.astro';
+import { normalizeTags } from '../../db';
+const params = Astro.url.searchParams;
+const query = params.get('q')?.trim() || '';
+const selectedTags = normalizeTags(params.getAll('tag')).sort();
+const sort = params.get('sort') || 'recent';
+const expanded = params.has('expanded') || selectedTags.length > 0;
+const apiUrl = new URL('/api/recipes', Astro.url);
+apiUrl.search = params.toString();
+const [response, tagResponse] = await Promise.all([
+  handleApi(new Request(apiUrl), env as unknown as Env),
+  handleApi(new Request(new URL('/api/tags', Astro.url)), env as unknown as Env),
+]);
+const data = await response.json() as { recipes?: RecipeSummary[]; total?: number; search?: { degraded?: boolean }; error?: string };
+const { tags = [] } = await tagResponse.json() as { tags?: { tag: string; count: number }[] };
+if (!response.ok) Astro.response.status = response.status;
+const recipes = [...(data.recipes || [])];
+if (sort === 'title') recipes.sort((a, b) => a.title.localeCompare(b.title));
+if (sort === 'quick') {
+  const duration = (r: RecipeSummary) => ((r.prep_time_minutes || 0) + (r.cook_time_minutes || 0)) || Infinity;
+  recipes.sort((a, b) => duration(a) - duration(b));
+}
+const heading = query ? 'Search results' : selectedTags.length ? selectedTags.join(' + ') : 'The collection';
+function tagLink(tag: string) {
+  const next = new URLSearchParams(params);
+  next.delete('tag'); next.delete('offset');
+  const selected = selectedTags.includes(tag) ? selectedTags.filter(t => t !== tag) : [...selectedTags, tag];
+  selected.sort().forEach(t => next.append('tag', t));
+  return `/recipes?${next}`;
+}
+const total = data.total ?? recipes.length;
+---
+<Layout title={query ? `${query} · Recipe Box` : 'Recipe Box'}>
+  <section class="collection" aria-label="Recipe collection">
+    <form class="toolbar" action="/recipes" method="get" id="recipe-search" role="search">
+      <div class="search"><span aria-hidden="true" class="search-icon">⌕</span><input type="search" name="q" placeholder="Ingredients, dishes, or what you’re craving…" maxlength="500" value={query} aria-label="Search recipes" /></div>
+      {selectedTags.map(tag => <input type="hidden" name="tag" value={tag} />)}
+      <label class="sort-control">Sort by<select name="sort" aria-label="Sort recipes">
+        <option value="recent" selected={sort === 'recent'}>{query ? 'Best match' : 'Recently added'}</option>
+        <option value="quick" selected={sort === 'quick'}>Quickest first</option><option value="title" selected={sort === 'title'}>A to Z</option>
+      </select></label>
+      <button class="button" type="submit">Search</button>
+    </form>
+    <div class="tag-filters" role="group" aria-label="Filter by tags">
+      <div class="tag-bar"><div class="tag-popular">
+        <a class:list={['tag-chip', { active: !selectedTags.length }]} href="/recipes">All recipes</a>
+        {tags.slice(0, 5).map(({ tag, count }) => <a class:list={['tag-chip', { active: selectedTags.includes(tag) }]} href={tagLink(tag)} rel="nofollow" aria-label={`${tag}, ${count} recipes`} aria-current={selectedTags.includes(tag) ? 'true' : undefined}>{tag}<span class="tag-count" aria-hidden="true">{count}</span></a>)}
+      </div></div>
+      {tags.length > 5 && <details class="more-tags" open={expanded}><summary class="tag-chip tag-toggle">More tags</summary><div class="tag-drawer"><p class="tag-hint">Recipes must match all selected tags.</p><div class="tag-drawer-chips">{tags.slice(5).map(({ tag, count }) => <a class:list={['tag-chip', { active: selectedTags.includes(tag) }]} href={tagLink(tag)} rel="nofollow" aria-current={selectedTags.includes(tag) ? 'true' : undefined}>{tag}<span class="tag-count" aria-hidden="true">{count}</span></a>)}</div></div></details>}
+    </div>
+    <div class="collection-heading"><h1 class="collection-title">{heading}</h1><span class="result-count" role="status">{response.ok ? `${recipes.length < total ? `${recipes.length} of ` : ''}${total} recipe${total === 1 ? '' : 's'}${data.search?.degraded ? ' · Keyword matches only right now' : ''}` : 'Unable to load'}</span></div>
+    <div class="grid">
+      {recipes.map((recipe, index) => <RecipeCard recipe={recipe} index={index} />)}
+      {!response.ok ? <div class="empty"><h3>The kitchen’s taking a moment.</h3><p>{response.status === 400 ? data.error : 'We couldn’t load your recipes. Please try again.'}</p><a class="button" href={Astro.url.pathname + Astro.url.search}>Try again</a></div> : !recipes.length && <div class="empty"><h3>{query || selectedTags.length ? 'Nothing on the menu. Yet.' : 'Good things start here.'}</h3><p>{query || selectedTags.length ? 'Try another ingredient, or come back to the whole collection.' : "Ask Claude to save your first recipe, then find it here whenever you're ready to cook."}</p>{(query || selectedTags.length > 0) && <a class="button" href="/recipes">Clear filters</a>}</div>}
+    </div>
+  </section>
+</Layout>

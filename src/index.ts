@@ -3,18 +3,23 @@
  *
  *   /mcp (or /mcp/<secret>)  Remote MCP server (Streamable HTTP) for Claude
  *   /api/*                   Read-only REST API for the frontend
- *   everything else          Static frontend from ./public
+ *   everything else          Astro server-rendered pages and static assets
  *
  * The MCP endpoint can be protected with a shared secret because claude.ai
  * custom connectors take a URL but no custom headers: setting the MCP_SECRET
  * secret moves the endpoint to the unguessable path /mcp/<secret>, and the
  * bare /mcp path starts returning 401.
  */
+import { handle } from "@astrojs/cloudflare/handler";
 import { RecipesMcpAgent } from "./mcp";
 import { handleApi } from "./api";
+import { syncSearchIndex } from "./search-index";
+import { limitPublicTraffic } from "./traffic";
+import { refreshRecipeSnapshot } from "./snapshot";
 import type { Env } from "./types";
 
 export { RecipesMcpAgent };
+export { RecipeSnapshot } from "./snapshot";
 
 const MCP_ROUTE = "/mcp";
 
@@ -29,6 +34,13 @@ function unauthorized(): Response {
 }
 
 export default {
+  async scheduled(_event: ScheduledController, env: Env): Promise<void> {
+    // Publication retries must run even if semantic indexing fails.
+    const results = await Promise.allSettled([syncSearchIndex(env), refreshRecipeSnapshot(env)]);
+    if (results.some(result => result.status === "rejected" || result.value === false)) {
+      throw new Error("Scheduled recipe maintenance failed; see snapshot/index logs.");
+    }
+  },
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -52,12 +64,13 @@ export default {
       return unauthorized();
     }
 
+    const limited = await limitPublicTraffic(request, env);
+    if (limited) return limited;
+
     if (path === "/api" || path.startsWith("/api/")) {
       return handleApi(request, env);
     }
 
-    // Static frontend (public/). Unmatched paths fall through to the assets
-    // binding, which serves index.html and friends.
-    return env.ASSETS.fetch(request);
+    return handle(request, env, ctx);
   },
 } satisfies ExportedHandler<Env>;

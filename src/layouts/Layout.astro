@@ -1,0 +1,44 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import { serializeJsonLd } from '../lib/structured-data.js';
+interface Props { title?: string; description?: string; image?: string | null; structuredData?: Record<string, unknown> }
+const { title = 'Recipe Box', description = 'Your personal collection of good things to cook.', image, structuredData } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const imageUrl = image ? new URL(image, Astro.site).href : undefined;
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content={imageUrl ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {imageUrl && <><meta property="og:image" content={imageUrl} /><meta name="twitter:image" content={imageUrl} /></>}
+    {structuredData && <script is:inline type="application/ld+json" set:html={serializeJsonLd(structuredData)} />}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍲</text></svg>" />
+    <link rel="stylesheet" href="/styles.css" />
+    <ClientRouter />
+  </head>
+  <body>
+    <a class="skip-link" href="#app">Skip to recipes</a>
+    <header class="site-header">
+      <a class="brand" href="/recipes"><span class="brand-mark" aria-hidden="true">R<span class="brand-dot">B</span></span><span class="brand-name">Recipe Box</span></a>
+      <span class="header-note">Recipes &amp; notes from the home kitchen</span>
+      <a class="collection-link" href="/recipes">The collection</a>
+    </header>
+    <main id="app" tabindex="-1"><slot /></main>
+    <footer class="site-footer"><p><span class="footer-brand">Recipe Box</span> Collected with care. Cooked &amp; shared.</p><span class="footer-note">For the kitchen, through the seasons.</span></footer>
+    <script>
+      import '../client/navigation';
+    </script>
+  </body>
+</html>

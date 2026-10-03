@@ -2,6 +2,14 @@
 export interface Env {
   /** D1 database holding the recipes. */
   DB: D1Database;
+  /** Optional locally; production uses Workers AI + a cosine Vectorize index. */
+  AI?: Ai;
+  RECIPE_VECTORS?: Vectorize;
+  /** Per-IP abuse controls; absent in offline local development. */
+  PUBLIC_RATE_LIMITER?: RateLimit;
+  SEARCH_RATE_LIMITER?: RateLimit;
+  /** Persisted public catalog, refreshed after edits; omitted in local dev. */
+  RECIPE_SNAPSHOT?: DurableObjectNamespace;
   /** Static frontend assets (./public). */
   ASSETS: Fetcher;
   /** Durable Object namespace backing the MCP agent. */

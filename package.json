@@ -4,23 +4,41 @@
   "private": true,
   "description": "Recipe box: remote MCP server for Claude + web frontend, on Cloudflare Workers",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "check": "tsc --noEmit",
+    "dev": "CLOUDFLARE_ENV=local astro dev",
+    "deploy": "npm run build && wrangler deploy",
+    "check": "astro check && tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "search:migrate": "wrangler d1 execute recipes-db --remote --file=./migrations/0003_semantic_search.sql",
+    "search:migrate:local": "wrangler d1 execute recipes-db --local --file=./migrations/0003_semantic_search.sql",
+    "search:reindex": "wrangler d1 execute recipes-db --remote --file=./scripts/reindex.sql",
+    "snapshot:migrate": "wrangler d1 execute recipes-db --remote --file=./migrations/0004_recipe_snapshot.sql",
+    "snapshot:publish": "node scripts/publish-snapshot.mjs",
     "db:create": "wrangler d1 create recipes-db",
     "db:migrate": "wrangler d1 execute recipes-db --remote --file=./schema.sql",
     "db:migrate:local": "wrangler d1 execute recipes-db --local --file=./schema.sql",
     "db:seed": "wrangler d1 execute recipes-db --remote --file=./seed.sql",
-    "db:seed:local": "wrangler d1 execute recipes-db --local --file=./seed.sql"
+    "db:seed:local": "wrangler d1 execute recipes-db --local --file=./seed.sql",
+    "build": "astro build",
+    "build:local": "CLOUDFLARE_ENV=local astro build",
+    "preview": "astro preview",
+    "test:ssr": "node scripts/smoke-ssr.mjs"
   },
   "dependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/cloudflare": "^14.3.1",
     "@modelcontextprotocol/sdk": "1.30.0",
     "agents": "^0.20.1",
+    "astro": "^7.3.2",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260813.1",
+    "esbuild": "^0.28.2",
     "typescript": "^5.9.0",
     "wrangler": "^4.123.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

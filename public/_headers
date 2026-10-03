@@ -1,0 +1,7 @@
+# Styles are unversioned; validate before reuse.
+/styles.css
+  Cache-Control: no-cache
+
+# Illustrations change rarely; replacements at the same URL can take a day.
+/illustrations/*
+  Cache-Control: public, max-age=86400, must-revalidate

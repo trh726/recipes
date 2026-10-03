@@ -98,7 +98,7 @@ function rowToSummary(row: RecipeRow): RecipeSummary {
   };
 }
 
-function normalizeTags(tags: string[] | undefined): string[] {
+export function normalizeTags(tags: string[] | undefined): string[] {
   if (!tags) return [];
   const seen = new Set<string>();
   for (const tag of tags) {
@@ -189,18 +189,28 @@ export async function getRecipe(db: D1Database, id: string): Promise<Recipe | nu
   return row ? rowToRecipe(row) : null;
 }
 
+/** Read the complete catalog and its revision in one consistent D1 transaction. */
+export async function readRecipeCatalog(db: D1Database): Promise<{ revision: number; recipes: Recipe[] }> {
+  const [version, rows] = await db.batch([
+    db.prepare("SELECT revision FROM recipe_publication WHERE id = 1"),
+    db.prepare("SELECT * FROM recipes ORDER BY updated_at DESC, id ASC"),
+  ]);
+  const revision = (version.results[0] as { revision: number } | undefined)?.revision;
+  if (revision === undefined) throw new Error("Recipe snapshot migration is missing");
+  return { revision, recipes: (rows.results as unknown as RecipeRow[]).map(rowToRecipe) };
+}
+
 export async function listRecipes(
   db: D1Database,
-  opts: { limit?: number; offset?: number; tag?: string } = {}
+  opts: { limit?: number; offset?: number; tag?: string; tags?: string[] } = {}
 ): Promise<{ recipes: RecipeSummary[]; total: number }> {
   const limit = clampLimit(opts.limit, 50);
   const offset = Math.max(Math.trunc(opts.offset ?? 0), 0);
-  const tag = opts.tag?.trim().toLowerCase();
-
-  // Tags are stored as a JSON array of lowercase strings, so an exact-element
-  // match is a LIKE on the serialized form: ["dinner","pasta"] contains "pasta".
-  const where = tag ? `WHERE tags LIKE '%' || ? || '%'` : "";
-  const tagPattern = tag ? [`"${tag.replaceAll('"', "")}"`] : [];
+  const tags = normalizeTags([...(opts.tags ?? []), ...(opts.tag ? [opts.tag] : [])]);
+  // Without filters, COUNT(*) can use SQLite's fast count instead of visiting
+  // every row to evaluate an empty JSON tag predicate.
+  const where = tags.length ? `WHERE ${allTagsCondition}` : "";
+  const tagPattern = tags.length ? [JSON.stringify(tags)] : [];
 
   const [rows, count] = await Promise.all([
     db
@@ -219,26 +229,41 @@ export async function listRecipes(
   };
 }
 
+// One bound JSON array, exact tag equality, and AND semantics (including zero tags).
+const allTagsCondition = `NOT EXISTS (
+  SELECT 1 FROM json_each(?) selected
+  WHERE NOT EXISTS (SELECT 1 FROM json_each(recipes.tags) actual WHERE actual.value = selected.value)
+)`;
+
 export async function searchRecipes(
   db: D1Database,
   query: string,
-  limit?: number
+  limit?: number,
+  tags: string[] = []
 ): Promise<RecipeSummary[]> {
   const ftsQuery = toFtsQuery(query);
   if (!ftsQuery) return [];
 
   const rows = await db
     .prepare(
-      `SELECT r.*
+      `SELECT recipes.*
          FROM recipes_fts f
-         JOIN recipes r ON r.rowid = f.rowid
-        WHERE recipes_fts MATCH ?
+         JOIN recipes ON recipes.rowid = f.rowid
+        WHERE recipes_fts MATCH ? AND ${allTagsCondition}
         ORDER BY f.rank
         LIMIT ?`
     )
-    .bind(ftsQuery, clampLimit(limit, 25))
+    .bind(ftsQuery, JSON.stringify(normalizeTags(tags)), clampLimit(limit, 25))
     .all<RecipeRow>();
 
+  return (rows.results ?? []).map(rowToSummary);
+}
+
+/** Hydrate vector matches from D1 so deleted recipes never appear in search. */
+export async function getRecipeSummaries(db: D1Database, ids: string[], tags: string[] = []): Promise<RecipeSummary[]> {
+  if (!ids.length) return [];
+  const rows = await db.prepare(`SELECT * FROM recipes WHERE id IN (${ids.map(() => "?").join(",")}) AND ${allTagsCondition}`)
+    .bind(...ids, JSON.stringify(normalizeTags(tags))).all<RecipeRow>();
   return (rows.results ?? []).map(rowToSummary);
 }
 

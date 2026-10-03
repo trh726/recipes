@@ -1,0 +1,21 @@
+---
+import type { RecipeSummary } from '../types';
+import { recipeImage, totalTime } from '../lib/presentation.js';
+interface Props { recipe: RecipeSummary; index: number }
+const { recipe, index } = Astro.props;
+const image = recipeImage(recipe);
+const tone = [...recipe.title].reduce((n, c) => n + c.charCodeAt(0), 0) % 4;
+---
+<a class="card" href={`/recipes/${recipe.id}`} data-recipe-id={recipe.id}>
+  <div class={`card-cover tone-${tone}`} aria-hidden="true">
+    <div class="plate"><span class="leaf leaf-one"></span><span class="leaf leaf-two"></span><span class="leaf leaf-three"></span><span class="plate-center"></span></div>
+    <span class="cover-caption">{recipe.tags[0] || 'From the recipe box'}</span>
+    {image.url && <img class:list={['card-img', { illustrated: image.illustrated }]} src={image.url} alt="" loading="lazy" transition:name={`image-${recipe.id}`} />}
+  </div>
+  <div class="card-body">
+    <div class="card-eyebrow"><span>{recipe.tags[0] || 'Recipe'}</span><span>{String(index + 1).padStart(2, '0')}</span></div>
+    <h2 transition:name={`title-${recipe.id}`}>{recipe.title}</h2>
+    {recipe.description && <p>{recipe.description}</p>}
+    <div class="card-meta"><span>{totalTime(recipe) || 'Take your time'}</span>{recipe.servings && <span>{recipe.servings}</span>}<span class="card-arrow" aria-hidden="true">↗</span></div>
+  </div>
+</a>

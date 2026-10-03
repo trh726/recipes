@@ -16,12 +16,13 @@
   "routes": [
     { "pattern": "recipes.heuermann.xyz", "custom_domain": true }
   ],
-  // Keep the *.workers.dev URL alive as well.
-  "workers_dev": true,
+  // Use the custom domain so alternate URLs cannot bypass its WAF protection.
+  "workers_dev": false,
+  "preview_urls": false,
 
-  // Static frontend, served for any route the Worker doesn't handle itself.
+  // Astro build assets; page requests fall through to the Worker.
   "assets": {
-    "directory": "./public",
+    "directory": "./dist/client",
     "binding": "ASSETS"
   },
 
@@ -34,6 +35,21 @@
     }
   ],
 
+  // Semantic recipe search. Direct local use is disabled to protect this index;
+  // `npm run dev` uses the separate local environment below (no AI bindings).
+  "ai": { "binding": "AI", "remote": false },
+  "vectorize": [
+    { "binding": "RECIPE_VECTORS", "index_name": "recipes-search", "remote": false }
+  ],
+  "triggers": { "crons": ["*/5 * * * *"] },
+
+  // These protect D1/AI work; they are per Cloudflare location, not billing caps.
+  // Keep the account on Workers Free for a $0 Workers/D1 ceiling.
+  "ratelimits": [
+    { "name": "PUBLIC_RATE_LIMITER", "namespace_id": "26092601", "simple": { "limit": 30, "period": 60 } },
+    { "name": "SEARCH_RATE_LIMITER", "namespace_id": "26092602", "simple": { "limit": 10, "period": 60 } }
+  ],
+
   // Durable Object backing the MCP agent (required by the `agents` SDK).
   // McpAgent uses a DO to hold per-connection MCP session state.
   "durable_objects": {
@@ -41,6 +57,10 @@
       {
         "name": "MCP_OBJECT",
         "class_name": "RecipesMcpAgent"
+      },
+      {
+        "name": "RECIPE_SNAPSHOT",
+        "class_name": "RecipeSnapshot"
       }
     ]
   },
@@ -48,10 +68,35 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["RecipesMcpAgent"]
+    },
+    {
+      "tag": "v2-recipe-snapshot",
+      "new_sqlite_classes": ["RecipeSnapshot"]
     }
   ],
 
   "observability": {
     "enabled": true
+  },
+
+  // Bindings aren't inherited into named environments. Keep local development
+  // offline and keyword-only; production always deploys the top-level config.
+  "env": {
+    "local": {
+      "name": "recipes-local",
+      "routes": [],
+      "workers_dev": false,
+      "assets": { "directory": "./dist/client", "binding": "ASSETS" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "recipes-db",
+          "database_id": "49f63135-808c-4744-9e67-9b2c9309e375"
+        }
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "MCP_OBJECT", "class_name": "RecipesMcpAgent" }]
+      }
+    }
   }
 }

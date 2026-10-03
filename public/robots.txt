@@ -1,0 +1,7 @@
+User-agent: *
+# Recipe pages are crawlable; search and filter combinations are not.
+Disallow: /?
+Disallow: /recipes?
+Disallow: /recipes/?
+Disallow: /api/
+Disallow: /mcp

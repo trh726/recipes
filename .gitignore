@@ -17,3 +17,6 @@ dist/
 # Editor/OS noise
 .DS_Store
 *.log
+
+# Astro generated types and cache
+.astro/

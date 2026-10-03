@@ -16,9 +16,10 @@ import {
   getRecipe,
   listRecipes,
   listTags,
-  searchRecipes,
   updateRecipe,
 } from "./db";
+import { hybridSearch, MAX_QUERY_LENGTH } from "./search";
+import { refreshRecipeSnapshot } from "./snapshot";
 
 /** Wrap a payload as an MCP text result. */
 function jsonResult(payload: unknown) {
@@ -93,20 +94,33 @@ export class RecipesMcpAgent extends McpAgent<Env> {
     const db = () => this.env.DB;
 
     this.server.registerTool(
+      "refresh_website",
+      {
+        title: "Refresh recipe website",
+        description: "Refresh the public recipe catalog after a bulk import or a direct database edit. Normal recipe saves already do this automatically.",
+        inputSchema: {},
+      },
+      async () => (await refreshRecipeSnapshot(this.env))
+        ? jsonResult({ refreshed: true, message: "The website will show the latest recipes within one minute." })
+        : errorResult("Recipes are saved, but the website refresh failed. The scheduled job will retry."),
+    );
+
+    this.server.registerTool(
       "list_recipes",
       {
         title: "List recipes",
         description:
           "List saved recipes, newest first. Returns compact summaries (id, title, tags, times). " +
-          "Optionally filter by a single tag. Use get_recipe for full details.",
+          "Optionally filter by tags; recipes must carry every selected tag. Use get_recipe for full details.",
         inputSchema: {
           limit: z.number().int().min(1).max(100).optional().describe("Max results (default 50)"),
           offset: z.number().int().min(0).optional().describe("Pagination offset (default 0)"),
           tag: z.string().optional().describe("Only recipes carrying this tag"),
+          tags: z.array(z.string()).optional().describe("Require all of these tags (AND)"),
         },
       },
-      async ({ limit, offset, tag }) => {
-        const result = await listRecipes(db(), { limit, offset, tag });
+      async ({ limit, offset, tag, tags }) => {
+        const result = await listRecipes(db(), { limit, offset, tag, tags });
         return jsonResult(result);
       }
     );
@@ -116,16 +130,18 @@ export class RecipesMcpAgent extends McpAgent<Env> {
       {
         title: "Search recipes",
         description:
-          "Full-text search across titles, descriptions, ingredients, instructions, tags, and notes. " +
-          "Matches word prefixes, so 'tomat' finds 'tomatoes'. Returns compact summaries ranked by relevance.",
+          "Search by ingredients, word prefixes ('tomat' finds 'tomatoes'), or meaning ('a cozy one-pot dinner'). " +
+          "Combines full-text and semantic search, falling back to keywords if semantic search is unavailable. " +
+          "Returns compact summaries ranked by relevance; use get_recipe to verify dietary requirements.",
         inputSchema: {
-          query: z.string().min(1).describe("Search terms, e.g. 'chicken lime' or an ingredient"),
+          query: z.string().min(1).max(MAX_QUERY_LENGTH).describe("Ingredients, dish names, or what you feel like cooking"),
+          tags: z.array(z.string()).optional().describe("Require all of these tags (AND), in addition to the search query"),
           limit: z.number().int().min(1).max(100).optional().describe("Max results (default 25)"),
         },
       },
-      async ({ query, limit }) => {
-        const recipes = await searchRecipes(db(), query, limit);
-        return jsonResult({ recipes, query });
+      async ({ query, limit, tags }) => {
+        const result = await hybridSearch(this.env, query, limit, tags);
+        return jsonResult({ ...result, query });
       }
     );
 
@@ -169,6 +185,7 @@ export class RecipesMcpAgent extends McpAgent<Env> {
       },
       async (input) => {
         const recipe = await createRecipe(db(), input);
+        await refreshRecipeSnapshot(this.env);
         return jsonResult(recipe);
       }
     );
@@ -202,6 +219,7 @@ export class RecipesMcpAgent extends McpAgent<Env> {
       async ({ id, ...patch }) => {
         const recipe = await updateRecipe(db(), id, patch);
         if (!recipe) return errorResult(`No recipe found with id '${id}'.`);
+        await refreshRecipeSnapshot(this.env);
         return jsonResult(recipe);
       }
     );
@@ -220,6 +238,7 @@ export class RecipesMcpAgent extends McpAgent<Env> {
       async ({ id }) => {
         const deleted = await deleteRecipe(db(), id);
         if (!deleted) return errorResult(`No recipe found with id '${id}'.`);
+        await refreshRecipeSnapshot(this.env);
         return jsonResult({ deleted: true, id });
       }
     );
